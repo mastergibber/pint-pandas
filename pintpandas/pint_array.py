@@ -5,6 +5,7 @@ import pint
 # These should be used for checking instances 
 from pint.unit import _Unit
 from pint.quantity import _Quantity
+from pint.compat import string_types
 
 import copy
 import warnings
@@ -27,11 +28,8 @@ from pandas.api.types import (
     is_integer,
     is_bool,
     )
-from pandas.compat import u, set_function_name
-from pandas.io.formats.printing import (
-    format_object_summary, format_object_attrs, default_pprint)
+from pandas.compat import set_function_name
 from pandas import Series, DataFrame
-from pandas import compat
 
 class PintType(ExtensionDtype):
     """
@@ -47,6 +45,10 @@ class PintType(ExtensionDtype):
     _cache = {}
     ureg = pint.UnitRegistry()
     
+    @property
+    def _is_numeric(self):
+        # type: () -> bool
+        return True
     def __new__(cls, units=None):
         """
         Parameters
@@ -81,7 +83,7 @@ class PintType(ExtensionDtype):
 
     @classmethod
     def _parse_dtype_strict(cls, units):
-        if isinstance(units, compat.string_types):
+        if isinstance(units, string_types):
             if units.startswith('pint[') or units.startswith('Pint['):
                 if not units[-1]==']':
                     raise ValueError("could not construct PintType")
@@ -99,7 +101,7 @@ class PintType(ExtensionDtype):
         Strict construction from a string, raise a TypeError if not
         possible
         """
-        if (isinstance(string, compat.string_types) and
+        if (isinstance(string, string_types) and
             (string.startswith('pint[') or
              string.startswith('Pint['))):
             # do not parse string like U as pint[U]
@@ -116,8 +118,8 @@ class PintType(ExtensionDtype):
 #                 pass
         raise TypeError("could not construct PintType")
 
-    def __unicode__(self):
-        return compat.text_type(self.name)
+    # def __unicode__(self):
+        # return compat.text_type(self.name)
 
     @property
     def name(self):
@@ -144,7 +146,7 @@ class PintType(ExtensionDtype):
         Return a boolean if we if the passed type is an actual dtype that we
         can match (via string or type)
         """
-        if isinstance(dtype, compat.string_types):
+        if isinstance(dtype, string_types):
             if dtype.startswith('pint[') or dtype.startswith('Pint['):
                 try:
                     if cls._parse_dtype_strict(dtype) is not None:
@@ -245,26 +247,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
 
         self._data[key] = value
     
-    def __repr__(self):
-        """
-        Return a string representation for this object.
 
-        Invoked by unicode(df) in py2 only. Yields a Unicode String in both
-        py2/py3.
-        """
-
-        klass = self.__class__.__name__
-        data = format_object_summary(self, default_pprint, False)
-        attrs = format_object_attrs(self)
-        space = " "
-
-        prepr = (u(",%s") %
-                 space).join(u("%s=%s") % (k, v) for k, v in attrs)
-
-        res = u("%s(%s%s)") % (klass, data, prepr)
-
-        return res
-		
     def _formatter(self, boxed=False):
         # type: (bool) -> Callable[[Any], Optional[str]]
         """Formatting function for scalar values.
@@ -318,7 +301,7 @@ class PintArray(ExtensionArray, ExtensionOpsMixin):
         array : ndarray
             NumPy ndarray with 'dtype' for its dtype.
         """
-        if isinstance(dtype,str) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
+        if isinstance(dtype,string_types) and (dtype.startswith("Pint[") or dtype.startswith("pint[")):
             dtype = PintType(dtype)
         if isinstance(dtype,PintType):
             if dtype == self._dtype:
